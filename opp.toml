@@ -1,0 +1,22 @@
+[server]
+host = "127.0.0.1"
+port = 11435
+
+[upstream]
+base_url = "http://localhost:11434"
+request_timeout_seconds = 300
+
+[auth]
+client_api_keys = []
+
+[opencode]
+provider_id = "company-ollama"
+provider_name = "Company Ollama"
+model = "qwen2.5-coder:32b"
+
+[opencode.models."qwen2.5-coder:32b"]
+name = "Qwen 2.5 Coder 32B"
+context = 32768
+output = 8192
+tool_call = true
+temperature = true

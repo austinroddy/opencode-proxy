@@ -1,0 +1,11 @@
+.venv/
+.nox/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+build/
+.opencode-proxy.log
+.opencode-proxy.pid
+*.py[cod]
+*.egg-info/
+.env

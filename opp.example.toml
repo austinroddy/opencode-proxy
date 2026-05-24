@@ -1,0 +1,40 @@
+[server]
+host = "127.0.0.1"
+port = 11435
+
+[upstream]
+# Base URL for the Ollama-shaped endpoint. The proxy calls:
+#   GET  <base_url>/api/tags
+#   POST <base_url>/api/chat
+base_url = "https://your-company-ollama-compatible-endpoint.example.com"
+request_timeout_seconds = 300
+
+# Optional bearer token forwarded to the upstream as:
+#   Authorization: Bearer <api_key>
+# api_key = "replace-me"
+
+[auth]
+# Optional inbound client API keys for opencode users who call this proxy.
+# When this list is empty, /v1/models and /v1/chat/completions are unauthenticated.
+# When set, clients must send Authorization: Bearer <key> or x-api-key: <key>.
+client_api_keys = []
+# client_api_keys = ["team-token-1", "team-token-2"]
+
+[defaults]
+# Optional fallback if an OpenAI request omits "model".
+# opencode normally sends a model, so most users can leave this commented.
+# model = "qwen2.5-coder:32b"
+
+[opencode]
+# Metadata used by humans and README examples. The proxy does not mutate
+# opencode config files.
+provider_id = "company-ollama"
+provider_name = "Company Ollama"
+model = "qwen2.5-coder:32b"
+
+[opencode.models."qwen2.5-coder:32b"]
+name = "Qwen 2.5 Coder 32B"
+context = 32768
+output = 8192
+tool_call = true
+temperature = true
