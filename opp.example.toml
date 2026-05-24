@@ -26,11 +26,18 @@ client_api_keys = []
 # model = "qwen2.5-coder:32b"
 
 [opencode]
-# Metadata used by humans and README examples. The proxy does not mutate
-# opencode config files.
+# Metadata used to generate opencode config.
 provider_id = "company-ollama"
 provider_name = "Company Ollama"
 model = "qwen2.5-coder:32b"
+
+# Optional. If omitted, generated opencode config points at this proxy's
+# configured [server] host and port.
+# api_url = "http://127.0.0.1:11435/v1"
+
+# Optional. If omitted, generated opencode config uses the first [auth]
+# client_api_keys value, or "local-proxy" when local auth is disabled.
+# api_key = "team-token-1"
 
 [opencode.models."qwen2.5-coder:32b"]
 name = "Qwen 2.5 Coder 32B"
@@ -38,3 +45,9 @@ context = 32768
 output = 8192
 tool_call = true
 temperature = true
+# Optional opencode cost metadata. These numbers are passed through to
+# opencode config; the proxy does not calculate costs itself.
+# input_cost = 0.0
+# output_cost = 0.0
+# cache_read_cost = 0.0
+# cache_write_cost = 0.0

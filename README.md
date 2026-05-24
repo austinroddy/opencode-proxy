@@ -51,6 +51,7 @@ and tests that document the protocol conversion.
 - `opp.example.toml`: commented config template
 - `opencode_proxy/app.py`: request/response translation
 - `opencode_proxy/config.py`: TOML schema
+- `opencode_proxy/opencode_config.py`: opencode config generation and merge logic
 - `opencode-proxy.sh`: start/stop/status helper
 - `tests/test_app.py`: executable examples
 
@@ -159,6 +160,36 @@ x-api-key: team-opencode-token
 
 The opencode custom provider sends `options.apiKey` as a bearer token through
 the OpenAI-compatible SDK.
+
+The `[opencode]` block in `opp.toml` controls generated opencode config:
+
+```toml
+[opencode]
+provider_id = "company-ollama"
+provider_name = "Company Ollama"
+model = "qwen2.5-coder:32b"
+
+# Optional. If omitted, generated opencode config points at this proxy's
+# configured [server] host and port.
+# api_url = "http://127.0.0.1:11435/v1"
+
+# Optional. If omitted, generated opencode config uses the first [auth]
+# client_api_keys value, or "local-proxy" when local auth is disabled.
+# api_key = "team-token-1"
+
+[opencode.models."qwen2.5-coder:32b"]
+name = "Qwen 2.5 Coder 32B"
+context = 32768
+output = 8192
+tool_call = true
+temperature = true
+
+# Optional opencode cost metadata.
+input_cost = 0.0
+output_cost = 0.0
+cache_read_cost = 0.0
+cache_write_cost = 0.0
+```
 
 ## Local Install
 
@@ -279,49 +310,34 @@ curl http://127.0.0.1:11435/health
 curl http://127.0.0.1:11435/v1/models
 ```
 
-5. Add a custom provider to opencode.
+5. Let the proxy write the opencode provider config for you:
 
-Use either your project config:
-
-```text
-./opencode.json
+```bash
+./opencode-proxy.sh setup-opencode --verbose
 ```
 
-or your global user config:
+By default this writes:
 
 ```text
 ~/.config/opencode/opencode.json
 ```
 
-Example `opencode.json`:
+To write a project-local config instead:
 
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "company-ollama": {
-      "name": "Company Ollama",
-      "npm": "@ai-sdk/openai-compatible",
-      "api": "http://127.0.0.1:11435/v1",
-      "models": {
-        "qwen2.5-coder:32b": {
-          "name": "Qwen 2.5 Coder 32B",
-          "tool_call": true,
-          "temperature": true,
-          "limit": {
-            "context": 32768,
-            "output": 8192
-          }
-        }
-      },
-      "options": {
-        "apiKey": "local-proxy"
-      }
-    }
-  },
-  "model": "company-ollama/qwen2.5-coder:32b"
-}
+```bash
+./opencode-proxy.sh setup-opencode --opencode-config ./opencode.json --verbose
 ```
+
+Preview without writing:
+
+```bash
+./opencode-proxy.sh print-config
+```
+
+The setup command reads `opp.toml`, generates an `@ai-sdk/openai-compatible`
+provider, merges it into the target `opencode.json`, preserves other providers,
+accepts JSONC when reading existing config, writes a `.bak`, and sets opencode's
+default model to `provider-id/model-id`.
 
 6. Start opencode normally from the project using that config:
 
@@ -335,21 +351,24 @@ Or explicitly select the model:
 opencode --model company-ollama/qwen2.5-coder:32b
 ```
 
-Important values:
+Important values in `opp.toml`:
 
-- `provider.company-ollama.api` must end in `/v1`; the proxy owns `/v1/models`
-  and `/v1/chat/completions`.
-- `provider.company-ollama.npm` must be `@ai-sdk/openai-compatible`.
-- `provider.company-ollama.models` must list the model IDs your upstream
-  accepts.
-- `model` uses the opencode format `provider-id/model-id`.
-- `options.apiKey` can be any non-empty value for an unauthenticated local
-  proxy. For a shared proxy with `[auth].client_api_keys`, it must match one of
-  those configured keys.
+- `[opencode].provider_id` becomes the opencode provider ID.
+- `[opencode].model` is the upstream model ID. If it does not include a `/`,
+  setup writes opencode's `provider-id/model-id` form automatically.
+- `[opencode].api_url` optionally overrides the generated proxy URL. Use this
+  for a shared server, for example `https://opencode-proxy.example.com/v1`.
+- `[opencode].api_key` optionally overrides the generated opencode API key.
+- `[opencode.models.<model>].context` writes opencode `limit.context`.
+- `[opencode.models.<model>].output` writes opencode `limit.output`.
+- `[opencode.models.<model>].tool_call` tells opencode the model can use tools.
+- `[opencode.models.<model>].input_cost` and `output_cost` write opencode cost
+  metadata. Token usage still comes from the upstream response counters.
 
-## opencode Client Config
+## Manual opencode Client Config
 
-Add a custom OpenAI-compatible provider to opencode.
+Auto-setup is the preferred path. Manual config is still useful if you want to
+see exactly what gets generated or if you prefer to manage config yourself.
 
 Local proxy example:
 

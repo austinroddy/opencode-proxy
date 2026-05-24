@@ -6,6 +6,7 @@ import uuid
 from argparse import ArgumentParser
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -14,6 +15,13 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from opencode_proxy.config import Config, load_config
+from opencode_proxy.opencode_config import (
+    full_config,
+    merge_config,
+    opencode_config_path,
+    read_opencode_config,
+    write_opencode_config,
+)
 
 settings: Config | None = None
 
@@ -317,7 +325,25 @@ def main() -> None:
     parser = ArgumentParser(description="Run an OpenAI-compatible proxy for an Ollama-shaped upstream.")
     parser.add_argument("--config", default="opp.toml", help="Path to opp.toml")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose uvicorn logging")
+    subcommands = parser.add_subparsers(dest="command")
+
+    serve = subcommands.add_parser("serve", help="Run the proxy server")
+    serve.add_argument("--config", default="opp.toml", help="Path to opp.toml")
+    serve.add_argument("--verbose", action="store_true", help="Enable verbose uvicorn logging")
+
+    print_config = subcommands.add_parser("print-opencode-config", help="Print generated opencode config JSON")
+    print_config.add_argument("--config", default="opp.toml", help="Path to opp.toml")
+
+    setup = subcommands.add_parser("setup-opencode", help="Merge generated config into an opencode config file")
+    setup.add_argument("--config", default="opp.toml", help="Path to opp.toml")
+    setup.add_argument("--opencode-config", default=str(opencode_config_path()), help="Path to opencode.json")
+    setup.add_argument("--print", action="store_true", help="Print the merged config after writing")
+
     args = parser.parse_args()
+    if args.command in {"print-opencode-config", "setup-opencode"}:
+        run_config_command(args)
+        return
+
     set_config(load_config(args.config))
     uvicorn.run(
         app,
@@ -326,3 +352,17 @@ def main() -> None:
         port=config().server.port,
         reload=False,
     )
+
+
+def run_config_command(args: Any) -> None:
+    generated = full_config(load_config(args.config))
+    if args.command == "print-opencode-config":
+        print(json.dumps(generated, indent=2))
+        return
+
+    path = Path(args.opencode_config)
+    merged = merge_config(read_opencode_config(path), generated)
+    write_opencode_config(path, merged)
+    print(f"Wrote opencode config to {path}")
+    if args.print:
+        print(json.dumps(merged, indent=2))

@@ -29,6 +29,10 @@ class ModelConfig(BaseModel):
     name: str
     context: int | None = None
     output: int | None = None
+    input_cost: float | None = None
+    output_cost: float | None = None
+    cache_read_cost: float | None = None
+    cache_write_cost: float | None = None
     tool_call: bool = True
     temperature: bool = True
 
@@ -37,6 +41,8 @@ class OpencodeConfig(BaseModel):
     provider_id: str
     provider_name: str
     model: str
+    api_url: str | None = None
+    api_key: str | None = None
     models: dict[str, ModelConfig] = Field(default_factory=dict)
 
 

@@ -5,6 +5,7 @@ from setuptools import find_packages, setup
 RUNTIME_DEPS = [
     "fastapi>=0.115.0",
     "httpx>=0.27.0",
+    "json5>=0.10.0",
     "uvicorn[standard]>=0.30.0",
 ]
 

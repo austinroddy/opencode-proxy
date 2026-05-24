@@ -6,6 +6,7 @@ VENV_DIR="${ROOT_DIR}/.venv"
 PID_FILE="${ROOT_DIR}/.opencode-proxy.pid"
 LOG_FILE="${ROOT_DIR}/.opencode-proxy.log"
 CONFIG_FILE="${ROOT_DIR}/opp.toml"
+OPENCODE_CONFIG_FILE=""
 VERBOSE=0
 
 usage() {
@@ -15,6 +16,8 @@ Usage:
   ./opencode-proxy.sh stop [--verbose]
   ./opencode-proxy.sh restart [--config PATH] [--verbose]
   ./opencode-proxy.sh status [--verbose]
+  ./opencode-proxy.sh print-config [--config PATH]
+  ./opencode-proxy.sh setup-opencode [--config PATH] [--opencode-config PATH] [--verbose]
 
 Behavior:
   - Creates .venv if it does not exist.
@@ -102,7 +105,7 @@ start_proxy() {
     args+=("--verbose")
   fi
 
-  nohup "${VENV_DIR}/bin/opencode-proxy" "${args[@]}" >>"${LOG_FILE}" 2>&1 &
+  nohup "${VENV_DIR}/bin/opencode-proxy" serve "${args[@]}" >>"${LOG_FILE}" 2>&1 &
   echo "$!" >"${PID_FILE}"
   log "started pid $(cat "${PID_FILE}")"
   wait_until_ready
@@ -157,6 +160,11 @@ while [[ "$#" -gt 0 ]]; do
       VERBOSE=1
       shift
       ;;
+    --opencode-config)
+      [[ "$#" -ge 2 ]] || die "--opencode-config requires a path"
+      OPENCODE_CONFIG_FILE="$2"
+      shift 2
+      ;;
     -h | --help)
       usage
       exit 0
@@ -180,6 +188,21 @@ case "${COMMAND}" in
     ;;
   status)
     status_proxy
+    ;;
+  print-config)
+    ensure_venv
+    "${VENV_DIR}/bin/opencode-proxy" print-opencode-config --config "${CONFIG_FILE}"
+    ;;
+  setup-opencode)
+    ensure_venv
+    args=("--config" "${CONFIG_FILE}")
+    if [[ -n "${OPENCODE_CONFIG_FILE}" ]]; then
+      args+=("--opencode-config" "${OPENCODE_CONFIG_FILE}")
+    fi
+    if [[ "${VERBOSE}" == "1" ]]; then
+      args+=("--print")
+    fi
+    "${VENV_DIR}/bin/opencode-proxy" setup-opencode "${args[@]}"
     ;;
   *)
     usage
