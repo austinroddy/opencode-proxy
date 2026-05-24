@@ -230,6 +230,123 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   }'
 ```
 
+## Quick Setup With opencode
+
+Use this flow when each developer runs their own local proxy.
+
+1. Create the proxy config:
+
+```bash
+cd /Users/austin/Documents/GitHub/opencode-proxy
+cp opp.example.toml opp.toml
+```
+
+2. Edit `opp.toml` so `[upstream].base_url` points at your Ollama-shaped
+   endpoint:
+
+```toml
+[server]
+host = "127.0.0.1"
+port = 11435
+
+[upstream]
+base_url = "http://localhost:11434"
+request_timeout_seconds = 300
+
+[auth]
+client_api_keys = []
+```
+
+For a company endpoint that needs auth:
+
+```toml
+[upstream]
+base_url = "https://llm-internal.example.com"
+api_key = "upstream-token"
+request_timeout_seconds = 300
+```
+
+3. Start the proxy:
+
+```bash
+./opencode-proxy.sh start --verbose
+```
+
+4. Verify the proxy is reachable:
+
+```bash
+curl http://127.0.0.1:11435/health
+curl http://127.0.0.1:11435/v1/models
+```
+
+5. Add a custom provider to opencode.
+
+Use either your project config:
+
+```text
+./opencode.json
+```
+
+or your global user config:
+
+```text
+~/.config/opencode/opencode.json
+```
+
+Example `opencode.json`:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "company-ollama": {
+      "name": "Company Ollama",
+      "npm": "@ai-sdk/openai-compatible",
+      "api": "http://127.0.0.1:11435/v1",
+      "models": {
+        "qwen2.5-coder:32b": {
+          "name": "Qwen 2.5 Coder 32B",
+          "tool_call": true,
+          "temperature": true,
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      },
+      "options": {
+        "apiKey": "local-proxy"
+      }
+    }
+  },
+  "model": "company-ollama/qwen2.5-coder:32b"
+}
+```
+
+6. Start opencode normally from the project using that config:
+
+```bash
+opencode
+```
+
+Or explicitly select the model:
+
+```bash
+opencode --model company-ollama/qwen2.5-coder:32b
+```
+
+Important values:
+
+- `provider.company-ollama.api` must end in `/v1`; the proxy owns `/v1/models`
+  and `/v1/chat/completions`.
+- `provider.company-ollama.npm` must be `@ai-sdk/openai-compatible`.
+- `provider.company-ollama.models` must list the model IDs your upstream
+  accepts.
+- `model` uses the opencode format `provider-id/model-id`.
+- `options.apiKey` can be any non-empty value for an unauthenticated local
+  proxy. For a shared proxy with `[auth].client_api_keys`, it must match one of
+  those configured keys.
+
 ## opencode Client Config
 
 Add a custom OpenAI-compatible provider to opencode.
